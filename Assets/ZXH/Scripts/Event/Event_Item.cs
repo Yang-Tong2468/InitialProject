@@ -11,6 +11,38 @@ public class Event_Item : EventBase
 {
     [Header("事件属性")]
     [SerializeField] protected List<string> RequiredItems; // 需要的物品列表
+    [SerializeField] private TMP_Dropdown itemDropdown;// 下拉框
+    [SerializeField] private TMP_InputField countInput;// 数量输入框
+    [SerializeField] private Button consumeButton;// 消费按钮——测试用的
+    [SerializeField] private TMP_Text errorText; // 用于显示提示信息
+    [SerializeField] private bool isConsumable;// 物品是否够消费
+
+    private Inventory inventory;
+    private int selectedIndex = -1;
+    private int consumeAmount = 0;
+    private ItemInfo? selectedItemInfo;// 当前选中的物品信息
+
+    protected override void Awake()
+    {
+        base.Awake();
+
+        inventory = Character.Instance.inventory;
+    }
+
+    protected override void Start()
+    {
+        base.Start();
+
+        PopulateDropdown();
+        itemDropdown.onValueChanged.AddListener(OnDropdownChanged);
+        countInput.onValueChanged.AddListener(OnCountChanged);
+    }
+
+    private void OnDestroy()
+    {
+        countInput.onValueChanged.RemoveListener(OnCountChanged);
+        itemDropdown.onValueChanged.RemoveListener(OnDropdownChanged);
+    }
 
     public override void Initialize(EventData eventData)
     {

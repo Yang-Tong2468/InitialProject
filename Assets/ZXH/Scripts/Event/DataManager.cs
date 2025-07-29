@@ -10,10 +10,8 @@ public class DataManager : MonoBehaviour
     public static DataManager Instance { get; private set; }
 
     // 使用字典存储所有事件，Key是EventID，Value是事件数据，我们可以知道事件的名字来查找ID然后再拿到数据
-    // 通过ID查找事件
-    private Dictionary<string, EventData> eventDatabase = new Dictionary<string, EventData>();
+    public Dictionary<string, EventData> eventDatabase = new Dictionary<string, EventData>();
     private Dictionary<string, string> eventNameToIdMap = new Dictionary<string, string>();
-
 
     // CSV文件名，我们稍后会把它放在 Resources 文件夹下
     private const string EVENT_DATA_FILE_NAME = "EventData/EventData_ZXH";
@@ -158,10 +156,21 @@ public class DataManager : MonoBehaviour
     /// <returns></returns>
     public GameObject SpawnAtParentCenter(GameObject prefab, Transform parent)
     {
-        var instance = Instantiate(prefab, parent);
-        instance.transform.localPosition = Vector3.zero;
-        instance.transform.localRotation = Quaternion.identity;
+        var instance = Instantiate(prefab);
+        instance.transform.SetParent(parent, false); // 关键：保持本地位置一致
+        var rt = instance.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            // 确保父 anchors 是中心对齐，pivot 也在中心
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            // 这样 PosX/PosY 就表示 pivot 相对 anchors 的局部偏移
+            rt.anchoredPosition = Vector2.zero;
+            // 如果 prefab 有拉伸（stretch）特性，可用 offset = 0
+            // rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
         return instance;
     }
+    
     #endregion
 }
