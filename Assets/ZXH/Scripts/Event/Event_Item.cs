@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
+using Opsive.UltimateInventorySystem.Core.InventoryCollections;
+
 
 /// <summary>
 /// 需要物品的事件类
