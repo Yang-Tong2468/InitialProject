@@ -53,6 +53,8 @@ public class Event_Item : EventBase
 
     protected override void ExecutionEvent(EventData eventData)
     {
+        if (!isBock) return; // 如果没有锁定事件,表示玩家还没有确认选择就算到期也不会执行事件逻辑
+
         isEventActive = true;
 
         //属性和文本都过关
@@ -115,4 +117,167 @@ public class Event_Item : EventBase
 
         }
     }
+
+    #region 装备下拉框
+    /// <summary>
+    /// 填充下拉列表
+    /// </summary>
+    private void PopulateDropdown()
+    {
+        var slice = inventory.AllItemInfos; // 获取背包所有 ItemInfo
+        var options = new List<string>();
+        foreach (var itemInfo in slice)
+        {
+            options.Add($"{itemInfo.Item.name} x{itemInfo.Amount}");
+        }
+        itemDropdown.ClearOptions();
+        itemDropdown.AddOptions(options);
+        selectedIndex = itemDropdown.options.Count > 0 ? 0 : -1;
+    }
+
+    private void OnDropdownChanged(int index)
+    {
+        selectedIndex = index;
+        UpdateConsumableState();
+    }
+
+    private void OnCountChanged(string text)
+    {
+        consumeAmount = int.TryParse(text, out var v) ? v : 0;
+        UpdateConsumableState();
+    }
+
+    /// <summary>
+    /// 更新是否可消耗状态并更新当前物品
+    /// </summary>
+    private void UpdateConsumableState()
+    {
+        errorText.gameObject.SetActive(false);
+        isConsumable = false;
+        selectedItemInfo = null;
+
+        if (selectedIndex < 0) return;
+
+        var slice = inventory.AllItemInfos;
+        if (selectedIndex >= slice.Count)
+        {
+            ShowError("下拉索引越界");
+            return;
+        }
+
+        var info = slice[selectedIndex];
+        selectedItemInfo = info;
+
+        //提示是否满足事件
+        bool flowControl = Tip(info);
+        if (!flowControl)
+        {
+            return;
+        }
+
+        if (consumeAmount <= 0)
+        {
+            ShowError("请输入数量 (>0)");
+            return;
+        }
+
+        if (consumeAmount > info.Amount)
+        {
+            ShowError($"库存不足，仅有 {info.Amount}");
+            return;
+        }
+
+        // 当前选择合法且数量足够可消费
+        isConsumable = true;
+    }
+
+    /// <summary>
+    /// 提示是否满足事件
+    /// </summary>
+    /// <param name="info"></param>
+    /// <returns></returns>
+    private bool Tip(ItemInfo info)
+    {
+        //提示是否满足事件需求
+        var def = info.Item.ItemDefinition;
+        var defName = def.name;
+        if (RequiredItems != null && RequiredItems.Count > 0)
+        {
+            // 只允许消耗列入 RequiredItems 的物品
+            if (!RequiredItems.Contains(defName))
+            {
+                ShowError($"请选择正确物品（需：{RequiredItems[0]}）");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 点击消耗按钮
+    /// </summary>
+    private void OnConsume()
+    {
+        UpdateConsumableState();
+        if (!isConsumable || selectedItemInfo == null)
+        {
+            ShowError("当前无法消耗");
+            return;
+        }
+
+        var info = selectedItemInfo.Value;
+        var def = info.Item.ItemDefinition;
+        inventory.RemoveItem(def, consumeAmount);
+        Debug.Log($"消耗 {info.Item.name} x{consumeAmount}");
+        PopulateDropdown();
+
+        // 隐藏提示
+        errorText.gameObject.SetActive(false);
+    }
+
+
+    /// <summary>
+    /// 报错提醒
+    /// </summary>
+    /// <param name="msg"></param>
+    private void ShowError(string msg)
+    {
+        if (errorText != null)
+        {
+            errorText.text = msg;
+            errorText.gameObject.SetActive(true);
+            // 三秒后自动隐藏
+            StopAllCoroutines();
+            StartCoroutine(ClearErrorAfterSeconds(2f));
+        }
+    }
+
+    private IEnumerator ClearErrorAfterSeconds(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        if (errorText != null)
+        {
+            errorText.gameObject.SetActive(false);
+        }
+    }
+
+    protected override void SetRight()
+    {
+        base.SetRight();
+    }
+
+
+    protected override void LockingEvent()
+    {
+        base.LockingEvent();
+
+        if(itemDropdown != null)
+        {
+            itemDropdown.interactable = false;
+        }
+    }
+
+
+    #endregion
 }

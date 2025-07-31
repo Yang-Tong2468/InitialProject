@@ -10,7 +10,8 @@ public abstract class EventBase : MonoBehaviour
     [SerializeField] protected int currentDay = 0; // 被激活的持续时间
     [SerializeField] public EventData eventData; // 用于存储当前事件数据
     [SerializeField] public bool isEventActive = false; // 是否有事件在进行中
-    [SerializeField] protected bool isBock;//是否锁住
+    [SerializeField] public bool isBock;//是否锁住
+    [SerializeField] public bool isTime; // 是否到了可执行的时间
     [SerializeField] protected EventTriggerType triggerType; // 触发类型
     [SerializeField] protected bool IsRepeatable; //是否可重复触发
     [SerializeField] protected List<EventTriggerConditionBase> Conditions { get; set; } // 事件触发条件列表
@@ -19,6 +20,7 @@ public abstract class EventBase : MonoBehaviour
     [SerializeField] protected GameObject One;
     [SerializeField] protected GameObject Two;
     [SerializeField] protected GameObject Three;
+    [SerializeField] protected CanvasGroup mainCanvasGroup;
 
     [Header("One静态事件UI_拖拽")]
     [SerializeField] protected TextMeshProUGUI EventName; // 事件名称
@@ -61,6 +63,8 @@ public abstract class EventBase : MonoBehaviour
 
         CardSlots = transform.GetComponentsInChildren<CardSlot>(true);
 
+        //更新事件属性需求列表的值
+        UpdateAttributeRequirementValues();
         //遵循“创建者负责注册”的原则——防止顺序问题造成的事件管理器未初始化
         //CharacterEventManager.Instance?.RegisterEvent(this);
     }
@@ -79,9 +83,10 @@ public abstract class EventBase : MonoBehaviour
     {
         if (eventData.DurationDays <= currentDay && !isEventActive)
         {
+            isTime = true; // 到期了
             ExecutionEvent(eventData); // 执行事件逻辑
-
         }
+
         EventTime.text = (eventData.DurationDays - currentDay).ToString();
         DurationDays.text = $"剩余: {eventData.DurationDays - currentDay} 天"; // 更新UI显示剩余天数
         currentDay++;//把当前天数加1放在判断的后面，防止事件在第一天就结束了——游戏一开始就会天数加1
@@ -191,7 +196,7 @@ public abstract class EventBase : MonoBehaviour
     /// <summary>
     /// right按钮点击
     /// </summary>
-    public void SetRight()
+    protected virtual void SetRight()
     {
         LockingEvent(); // 锁住事件面板
     }
@@ -245,6 +250,8 @@ public abstract class EventBase : MonoBehaviour
     /// <param name="eventData"></param>
     protected virtual void ExecutionEvent(EventData eventData)
     {
+        if (!isBock) return; // 如果没有锁定事件,表示玩家还没有确认选择就算到期也不会执行事件逻辑
+
         isEventActive = true;
 
         if (RollTheDice_CharacterStat(eventData, successProbability))
